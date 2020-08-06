@@ -1,7 +1,7 @@
 package controllers
 
 import javax.inject._
-import models.{CarModel, InputModel, TestModel}
+import models.{CarModel, InputModel, RequestModel, TestModel}
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.TestService
@@ -15,8 +15,8 @@ import services.CarService
 @Singleton
 class HomeController @Inject()(
                                 val controllerComponents: ControllerComponents,
-                              val testService: TestService,
-                                val carService: CarService
+                                val carService: CarService,
+                                val testService: TestService
                               ) extends BaseController {
 
   /**
@@ -26,8 +26,9 @@ class HomeController @Inject()(
    * will be called when the application receives a `GET` request with
    * a path of `/`.
    */
-  def index() = Action { implicit request: Request[AnyContent] =>
-    val bodyAsJSON = request.body.asJson
+
+ def index() = Action { implicit request: Request[AnyContent] =>
+   val bodyAsJSON = request.body.asJson
     val bodyAsModel = bodyAsJSON.get.asOpt[TestModel].get
     println(bodyAsModel)
     val transformedModel = testService.modifyModel(bodyAsModel)
@@ -35,11 +36,15 @@ class HomeController @Inject()(
   }
 
   def car() = Action { implicit request: Request[AnyContent] =>
-    val bodyAsJson = request.body.asJson
-    val bodyAsModel = bodyAsJson.get.asOpt[InputModel].get
-    println(bodyAsModel)
-    val findCarOfOwner = carService.descriptionModel(bodyAsModel)
-    Ok(Json.toJson(findCarOfOwner))
+    request.body.asJson match {
+      case Some(jsonObject) => jsonObject.asOpt[InputModel] match {
+        case Some(model) =>
+          val response = carService.descriptionModel(model)
+          Ok(Json.toJson(response))
+        case None => BadRequest("Could not parse Json")
+      }
+      case None => BadRequest("Body not Json")
+    }
 
   }
 }
